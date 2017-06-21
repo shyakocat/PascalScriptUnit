@@ -3,7 +3,7 @@
 ◆简易类Pascal脚本             
 ◆2017/06/21  PascalScript1.0    
 
-　　PascalScriptUnit是基于pascal的脚本解释库，旨在建立类pascal语法的运行环境。是一种交互式简易脚本，pascal程序可以以此做到简单的外部交互效果。本代码与本条目发表前网上可以搜到的PascalScript的内容无关，Power by shyakocat 2017。pascalscript使用与pascal类似的语法，借鉴了c++、python、lua等。     
+　　PascalScriptUnit是基于pascal的脚本解释库，旨在建立类pascal语法的运行环境。PascalScript是一种交互式简易脚本，pascal程序可以以此做到简单的外部交互效果。本代码与本条目发表前网上可以搜到的PascalScript的内容无关，Power by shyakocat 2017。pascalscript使用与pascal类似的语法，借鉴了c++、python、lua等。     
 
 ># 变量类型
 　　1.0版本中，只有int(longint)、double(real)、psstr(ansistring)三种基本类型。脚本中不能新建也不能使用主程序定义的记录体或类。脚本中可以新建数组(类型intarr)，数组大小以第一次索引值为准，可以用[]访问longint数组或字符串，可以在主程序关联(Assign)主程序的longint数组。变量无需申明即可使用，所有未知变量都会以int=0的形式初始化。变量赋值时，类型也会随之赋给对象。      　
