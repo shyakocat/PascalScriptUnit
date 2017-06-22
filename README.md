@@ -6,7 +6,7 @@
 　　PascalScriptUnit是基于pascal的脚本解释库，旨在建立类pascal语法的运行环境。PascalScript是一种交互式简易脚本，pascal程序可以以此做到简单的外部交互效果。本代码与本条目发表前网上可以搜到的PascalScript的内容无关，Power by shyakocat 2017。pascalscript使用与pascal类似的语法，借鉴了c++、python、lua等。     
 
 ># 变量类型
-　　1.0版本中，只有int(longint)、double(real)、psstr(ansistring)三种基本类型。脚本中不能新建也不能使用主程序定义的记录体或类。脚本中可以新建数组(类型intarr)，数组大小以第一次索引值为准，可以用[]访问longint数组或字符串，可以在主程序关联(Assign)主程序的longint数组。变量无需申明即可使用，所有未知变量都会以int=0的形式初始化。变量赋值时，类型也会随之赋给对象。      　
+　　1.0版本中，只有int(longint)、double(real)、psstr(ansistring)三种基本类型。脚本中不能新建也不能使用主程序定义的记录体或类。脚本中可以新建一维数组(类型intarr)，数组大小以第一次索引值为准，可以用[]访问longint数组或字符串，可以在主程序关联(Assign)主程序的longint数组。变量无需申明即可使用，所有未知变量都会以int=0的形式初始化。变量赋值时，类型也会随之赋给对象。      　
 
 ># 运算
 　　1.0版本中，运算包括1元运算符not和其他pascal中常见的2元运算符(math库的**，+=等除外)。赋值语句:=也被认为是运算符，返回值为:=右边的值，可以用a:=b:=c这类方法。not在这里和c++的!一致，~在此不原生支持。普遍地，任何非关键字语句都有返回值。由于大部分情况都是不报错的，所以要自觉写正确语法。       
@@ -35,7 +35,7 @@
 
 ># 进阶原理
 >>### 基本类型
-　　基本类型被定义为vtype，包含int、double、psstr、TFunc(函数)、intarr(int数组指针)。这么写是为了不与pascal的基本类型或关键字冲突。PascalScriptUnit还提供了泛型动态数组List，支持pushback添加值、Items[i]访问成员等操作(更多可见源码)。PSLib内部的数组基本都由List实现。pascalscript1.0版本的索引相关操作都是Hash表实现。查询(Find)后返回在List中的位置，返回-1表示未找到。Clear过程是清空所有记录。效率一般。
+　　基本类型被定义为vtype，包含int、double、psstr、TFunc(函数)、intarr(int数组指针)。这么写是为了不与pascal的基本类型或关键字冲突。PascalScriptUnit还提供了泛型动态数组List，支持pushback添加值、Items[i]访问成员等操作(更多可见源码)。PSLib内部的数组基本都由List实现。pascalscript1.0版本的索引相关操作都是Hash表实现。查询(Find)后返回在List中的位置，返回-1表示未找到。Clear过程是清空所有记录。总体效率一般。
 >>### 函数
 　　TFunc原型是function(const a:specialize List<Variant>):Variant。在自己定义同样参数和返回值的函数后，可以通过Assign(函数名,@函数)来将其关联到PSLib中。UsesSystem中也是通过这种方法添加函数的。函数在处理时，等价于把栈中的连续一段值反转拷贝过来操作。
 >>### 解析
