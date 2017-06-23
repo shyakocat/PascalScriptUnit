@@ -37,7 +37,7 @@
 >>### 基本类型
 　　基本类型被定义为vtype，包含int、double、psstr、TFunc(函数)、intarr(int数组指针)。这么写是为了不与pascal的基本类型或关键字冲突。PascalScriptUnit还提供了泛型动态数组List，支持pushback添加值、Items[i]访问成员等操作(更多可见源码)。PSLib内部的数组基本都由List实现。pascalscript1.0版本的索引相关操作都是Hash表实现。查询(Find)后返回在List中的位置，返回-1表示未找到。Clear过程是清空所有记录。总体效率一般。
 >>### 函数
-　　TFunc原型是function(const a:specialize List<Variant>):Variant。在自己定义同样参数和返回值的函数后，可以通过Assign(函数名,@函数)来将其关联到PSLib中。UsesSystem中也是通过这种方法添加函数的。函数在处理时，等价于把栈中的连续一段值反转拷贝过来操作。
+　　TFunc原型是function(const a:specialize List\<Variant\>):Variant。在自己定义同样参数和返回值的函数后，可以通过Assign(函数名,@函数)来将其关联到PSLib中。UsesSystem中也是通过这种方法添加函数的。函数在处理时，等价于把栈中的连续一段值反转拷贝过来操作。
 >>### 解析
 　　介绍一些内部用到的方法         
 　　　　GetSeek  过滤字符，基本上在以下过程中均有用到      
