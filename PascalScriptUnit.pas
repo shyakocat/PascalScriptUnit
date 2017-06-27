@@ -541,12 +541,12 @@ var
        '-':Vau.pushback(tmp1-tmp2);
        '|':Vau.pushback(tmp1  or tmp2);
        '^':Vau.pushback(tmp1 xor tmp2);
-       '=':Vau.pushback(longint(tmp1=tmp2));
-       'b':Vau.pushback(longint(tmp1<>tmp2));
-       '<':Vau.pushback(longint(tmp1<tmp2));
-       '>':Vau.pushback(longint(tmp1>tmp2));
-       'x':Vau.pushback(longint(tmp1<=tmp2));
-       'y':Vau.pushback(longint(tmp1>=tmp2));
+       '=':Vau.pushback(longint((vartype(tmp1)=vartype(tmp2))and(tmp1=tmp2)));
+       'b':Vau.pushback(longint((vartype(tmp1)<>vartype(tmp2))or(tmp1<>tmp2)));
+       '<':Vau.pushback(longint((vartype(tmp1)=vartype(tmp2))and(tmp1<tmp2)));
+       '>':Vau.pushback(longint((vartype(tmp1)=vartype(tmp2))and(tmp1>tmp2)));
+       'x':Vau.pushback(longint((vartype(tmp1)=vartype(tmp2))and(tmp1<=tmp2)));
+       'y':Vau.pushback(longint((vartype(tmp1)=vartype(tmp2))and(tmp1>=tmp2)));
        ':':begin if tmpNam=' pending...' then halt(1100);
                  if vartype(tmpo)=varLongWord then
                  begin
