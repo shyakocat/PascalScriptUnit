@@ -861,6 +861,9 @@ var
   function __min(const a:VList):Variant;
   var i:longint; begin __min:=TransValue(a.Items[1]); for i:=2 to a.Size do if TransValue(a.Items[i])<__min then __min:=TransValue(a.Items[i]) end;
 
+  function __odd(const a:VList):Variant;
+  begin exit(longint(a.Items[1] and 1)) end;
+
   function __abs(const a:VList):Variant;
   begin exit(abs(TransValue(a.Items[1]))) end;
 
@@ -918,11 +921,14 @@ var
   function __ord(const a:VList):Variant;
   begin exit(longint(ord(ansistring(TransValue(a.Items[1]))[1]))) end;
 
+  function __pred(const a:VList):Variant;
+  begin exit(ansistring(pred(char(TransValue(a.Items[1]))))) end;
+
+  function __succ(const a:VList):Variant;
+  begin exit(ansistring(succ(char(TransValue(a.Items[1]))))) end;
+
   function __halt(const a:VList):Variant;
   begin if a.Size=0 then halt; halt(TransValue(a.Items[1])) end;
-
-  function __array(const a:VList):Variant;
-  begin exit(Qword(TransValue(a.Items[1]))) end;
 
 
  procedure PSLib.UsesSystem;
@@ -931,6 +937,7 @@ var
   Assign('writeln',@__writeln);
   Assign('max',@__max);
   Assign('min',@__min);
+  Assign('odd',@__odd);
   Assign('abs',@__abs);
   Assign('sqr',@__sqr);
   Assign('sqrt',@__sqrt);
@@ -950,10 +957,11 @@ var
   Assign('length',@__length);
   Assign('chr',@__chr);
   Assign('ord',@__ord);
+  Assign('pred',@__pred);
+  Assign('succ',@__succ);
   Assign('exit',@__halt);
   Assign('halt',@__halt);
 
-  Assign('array',@__array);
  end;
 
 
