@@ -49,25 +49,7 @@ type
  end;
 
  PSLib=object
-  public
    size:longint;
-   function Find(const _name:string):longint;
-   procedure Add(const _name:string;_type:vtypemode);
-   procedure Assign(const _name:string;const _value:longint);
-   procedure Assign(const _name:string;const _value:real);
-   procedure Assign(const _name:string;const _value:ansistring);
-   procedure Assign(const _name:string;const _value:TFunc);
-   procedure Assign(const _name:string;const _value:pint);
-   procedure Assign(const _name:string;_index,_value:longint);
-   function Get(const _name:string):Variant;
-   function Get(const _name:string;_index:longint):Variant;
-   function Get(const _name:string;const _param:VList):Variant;
-   function GetType(const _name:string):vtypemode;
-   function Exec(os:ansistring):longint;
-   function Exec(const ss:SList):longint;
-   procedure UsesSystem;
-   procedure clear;
-  private
    vname:HashStr;
    vtype   :specialize List<vtypemode>;
    vindex  :specialize List<longint>;
@@ -81,6 +63,22 @@ type
    Script:SList;
    ScriptDirector:ansistring;
    ArrayManage:specialize List<Arr>;
+   function Find(const _name:string):longint;
+   procedure Add(const _name:string;_type:vtypemode);
+   procedure Assign(const _name:string;const _value:longint);
+   procedure Assign(const _name:string;const _value:real);
+   procedure Assign(const _name:string;const _value:ansistring);
+   procedure Assign(const _name:string;const _value:TFunc);
+   procedure Assign(const _name:string;const _value:pint);
+   procedure Assign(const _name:string;_index,_value:longint);
+   function Get(const _name:string):Variant;
+   function Get(const _name:string;_index:longint):Variant;
+   function Get(const _name:string;const _param:VList):Variant;
+   function GetType(const _name:string):vtypemode;
+   function Exec(os:ansistring):longint;
+   function Exec(var ss:SList):longint;
+   procedure UsesSystem;
+   procedure clear;
    function newpint(x:longint):pint;
  end;
 
@@ -379,7 +377,7 @@ var
   exit(vtype.Items[i])
  end;
 
- function PSLib.Exec(const ss:SList):longint;
+ function PSLib.Exec(var ss:SList):longint;
  var
   i,_Args:longint;
   _Patt,_Nest:longint;
@@ -393,7 +391,7 @@ var
   _Nest:=Nest;
   _Args:=Args;
   _LNet:=LazNet.clone(1,LazNet.Size);
-  _Script:=Script.clone(1,Script.Size);
+  _Script:=SS.clone(1,SS.Size);
   _ScriptD:=ScriptDirector;
   Patt:=0;
   Nest:=0;
@@ -409,7 +407,7 @@ var
   Nest:=_Nest;
   Args:=_Args;
   LazNet:=_LNet;
-  Script:=_Script;
+  SS:=_Script;
   ScriptDirector:=_ScriptD
  end;
 
