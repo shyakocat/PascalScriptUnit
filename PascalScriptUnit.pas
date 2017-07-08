@@ -746,7 +746,7 @@ var
   function GetDelta:Variant;begin exit(GetDelta(s,i)) end;
   function GetDeltaSafe:ansistring;begin exit(GetDeltaSafe(s,i)) end;
   function GetDelta(const s:ansistring):Variant;var i:longint=1;begin exit(GetDelta(s,i)) end;
-  function GetEpsilon:ansistring;begin exit(GetEpsilon(s,i)) end;
+  function GetEpsilon:ansistring;begin exit(GetEpsilon(os,i)) end;
 
 
   procedure Release;
@@ -817,10 +817,11 @@ var
 
   procedure GetLazy;
   var
-   t:ansistring;
+   ot,t:ansistring;
   begin
    LazTag:=1;
-   t:=GetEpsilon;
+   ot:=GetEpsilon;
+   t:=lowercase(ot);
    if t[length(t)]=';' then begin LazTag:=0; if LazNet.top>0 then dec(LazNet.Items[LazNet.Size]) end;
    if t='begin' then begin inc(nest); LazNet.pushback(1) end;
    if t='end' then begin dec(nest); LazNet.pop end;
@@ -828,7 +829,7 @@ var
       (copy(t,1,2)='if')or
       (copy(t,1,3)='for')or
       (copy(t,1,5)='while') then inc(LazNet.Items[LazNet.Size]);
-   Script.pushback(t);
+   Script.pushback(ot);
    if (nest=0)and(LazTag=0)and(LazNet.Size=1)and(LazNet.Items[1]=0) then Release
   end;
 
@@ -991,7 +992,7 @@ begin
  Pri['l']:=70; //shl
  Pri['f']:=80; //function
 
- acceptset:=['a'..'z','0'..'9','_','$','&','%','.'];
+ acceptset:=['A'..'Z','a'..'z','0'..'9','_','$','&','%','.'];
    pattset:=['(',')','[',']',#39,',',';'];
     runset:=['!'..'/',':'..'@','['..'`']-['$','&','%','.'];
 
