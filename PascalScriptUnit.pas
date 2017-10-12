@@ -1646,8 +1646,8 @@ var
    If a.Size<1 Then Exit(PS0);
    For i:=1 to A.Size Do
    Case Ansistring(A.Items[i]) Of
-    'r':Begin Close(PSStdIn); PSStdIn:=Input End;
-    'w':Begin Close(PSStdOut); PSStdOut:=Output End;
+    'r':Begin Close(PSStdIn);  Assign(PSStdIn,'');  Reset(PSStdIn) End;
+    'w':Begin Close(PSStdOut); Assign(PSStdOut,''); Rewrite(PSStdOut) End;
    End;
    Exit(PS1)
   End;
@@ -1674,7 +1674,8 @@ var
   Function __readlnf(Const a:VList):PSValue;
   Begin
    __readf(a);
-   readln(PSStdIn)
+   readln(PSStdIn);
+   Exit(PS1)
   End;
 
   function __writef(const a:VList):PSValue;
