@@ -1290,7 +1290,7 @@ var
    GetSeek(s,i);
    Start:=i;
    repeat
-    now:=GetAlphaSafe(s,i);
+    now:=LowerCase(GetAlphaSafe(s,i));
     if (now='begin')or
        (now='end')or
        (now='if')or
