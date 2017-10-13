@@ -121,7 +121,7 @@ end.
     原本以Variant表示任意值，现在以PSValue表示。（顺便一说，在做SAGalgame.pas时发现Variant的表达对PSValue也适用，PS1.0版本大概在PS2.0中可能可以兼容很多内容）         
     PSValue是以vTypeMode（类型）和pointer（指针）记录一个变量。现阶段暂时未考虑内存的回收（？）    
 ># 新增了哪些内容？    
->>### 斐波那契数列2    
+>>### 自定义函数（递归斐波那契数列）    
 ```
 function Fib(n)If(n=0)or(n=1)Then Exit(1);Exit(Fib(n-1)+Fib(n-2));
 For i:=1 to 20 Do WriteLn('Fib(',i,') = ',Fib(i));
@@ -131,16 +131,40 @@ For i:=1 to 20 Do WriteLn('Fib(',i,') = ',Fib(i));
 ```
 fileopen('User.in','r')
 fileopen('User.out','w')
-a:=''
-readlnf(a)
-writelnf(a)
+ a:=''
+ readlnf(a)
+ writelnf(a)
 fileclose('r','w')
-b:=0
-readf(b)
-writef(b)  //关闭后默认在控制台中输入输出
+ b:=0
+ readf(b)
+ writef(b)  //关闭后默认在控制台中输入输出
+```    
+>>### 自定义类
 ```
+object complex(real,imag)
+function complex.create(a,b)real:=a,imag:=b;
+function complex.add(a,b)real:=real+a,imag:=imag+b;
 
-
+x:=complex
+x.create(1,3)
+For i:=1 to 10 Do x.add(x.real,x.imag);
+WriteLn(x.real,' ',x.imag)
+//暂时不支持编译错误，写码时谨慎
+```    
+>>### 特殊的类（array）
+```
+function print()For i:=1 to w.Size Do Write(w[i],' ');WriteLn;
+u:=array
+u.Create
+u.PushBack(2,'xyz',2.7183)
+v:=['Test',666,0.10]
+w:=u+v
+Print
+w.Reverse(1,6)
+w.Delete(2,3)
+w.Insert(1,'CCS',998244353,-0.1)
+Print
+```
 
 
 
