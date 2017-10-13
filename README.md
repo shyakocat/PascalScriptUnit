@@ -150,7 +150,7 @@ x.create(1,3)
 For i:=1 to 10 Do x.add(x.real,x.imag);
 WriteLn(x.real,' ',x.imag)
 //暂时不支持编译错误，写码时谨慎
-```    
+```
 >>### 特殊的类（array）
 ```
 function print()For i:=1 to w.Size Do Write(w[i],' ');WriteLn;
