@@ -58,7 +58,7 @@ type
 
  OutFunc=Record Caption:Ansistring; main:TFunc End;
  LocalFunc=Record Caption:Ansistring; Carry,Code:SList End;
- LocalObj=Record Caption,Frame:Ansistring; Outer:Pointer; Carry:SList; Data:VList; DataIndex:HashStr End;
+ LocalObj=Record Caption,FrameRead,FrameWrite:Ansistring; Outer:Pointer; Carry:SList; Data:VList; DataIndex:HashStr End;
 
 
 
@@ -77,6 +77,7 @@ type
    Vname:HashStr;
    VData:VList;
 
+   NoteFlag:Boolean;
    LazNet:specialize List<longint>;
    Patt,Nest,ForBegin,ForEnd,LazTag:longint;
    Script,Carry:SList;
@@ -90,6 +91,7 @@ type
    procedure Assign(const _name:string;const _value:TFunc);
    procedure Assign(const _name:string;const _value:LocalFunc);
    procedure Assign(const _name:string;const _value:LocalObj);
+   Function Assign(Const _Name:String;Const _Param:VList):PSValue;
    Function Get(Const _Name:String):PSValue;
    Function Get(Const _Name:String;Const _Param:VList):PSValue;
    function GetType(const _name:string):vtypemode;
@@ -505,7 +507,8 @@ var
   With Result Do
   Begin
    Caption:=_Name;
-   Frame:='';
+   FrameRead:='';
+   FrameWrite:='';
    Outer:=Nil;
    Carry.Clear;
    Data.Clear;
@@ -513,12 +516,13 @@ var
   End
  End;
 
- Function NewLocalObj(Const _Name,_Frame:Ansistring):LocalObj;
+ Function NewLocalObj(Const _Name,_FrameR,_FrameW:Ansistring):LocalObj;
  Begin
   With Result Do
   Begin
    Caption:=_Name;
-   Frame:=_Frame;
+   FrameRead :=_FrameR;
+   FrameWrite:=_FrameW;
    Outer:=Nil;
    Carry.Clear;
    Data.Clear;
@@ -532,7 +536,8 @@ var
   With Result Do
   Begin
    Caption:=_Name;
-   Frame:='';
+   FrameRead:='';
+   FrameWrite:='';
    Outer:=Nil;
    Carry:=_carry.clone(1,_carry.Size);
    DataIndex.Clear;
@@ -723,6 +728,7 @@ var
  procedure PSLib.Clear;
  begin
   Size:=0;
+  NoteFlag:=False;
   vName.Clear;
   vData.Clear;
   LazNet.Clear;
@@ -742,6 +748,18 @@ var
   i:=Find(_Name);
   If i=-1 Then I:=Add(_Name,PSInt);
   vData.Items[i]:=NewPSValue(_Value)
+ End;
+
+ Function PSLib.Assign(Const _Name:String;Const _Param:VList):PSValue;
+ Var i:Longint;
+ Begin
+  i:=Find(_Name); If I=-1 Then Halt(1001);//Get Fail
+  Result:=vData.Items[i];
+  Case Result.Tp Of
+   PSStr      :If _Param.Size<2 Then Halt(1099){Parameter Error}
+               Else Begin pAnsistring(Result.P)^[Longint(_Param.Items[1])]:=Ansistring(_Param.Items[2])[1]; Exit(PS1) End;
+   PSObj      :Exit(ExecObj(pLocalObj(Result.p)^,pLocalObj(Result.p)^.FrameWrite,_Param));
+  End
  End;
 
  procedure PSLib.Assign(const _name:string;const _value:longint);
@@ -813,13 +831,13 @@ var
   End;
   i:=Find(_Name); If I=-1 Then Halt(1001);//Get Fail
   Result:=vData.Items[i];
-  If Result.tp=PSFunc      Then Exit(pOutFunc(Result.p)^.main(_Param));
-  If Result.tp=PSFuncLocal Then Exit(ExecFunc(pLocalFunc(Result.P)^,_Param));
-  If Result.tp=PSStr       Then
-   With _Param.Items[1] Do If tp=PSInt Then
-    Exit(Char(pAnsistring(Result.P)^[PInt(P)^]));
-  If Result.tp=PSObj       Then
-   Exit(ExecObj(pLocalObj(Result.p)^,pLocalObj(Result.p)^.Frame,_Param));
+  Case Result.Tp Of
+   PSFunc     :Exit(pOutFunc(Result.p)^.main(_Param));
+   PSFuncLocal:Exit(ExecFunc(pLocalFunc(Result.P)^,_Param));
+   PSStr      :With _Param.Items[1] Do If tp=PSInt Then
+                Exit(Char(pAnsistring(Result.P)^[PInt(P)^]));
+   PSObj      :Exit(ExecObj(pLocalObj(Result.p)^,pLocalObj(Result.p)^.FrameRead,_Param));
+  End
  end;
 
  function PSLib.GetType(const _name:string):vtypemode;
@@ -1113,7 +1131,14 @@ var
       End
      end
      else
-     begin
+     If Tmp0='w' Then
+     Begin
+      NumParamCharge; tmpNam:=Nam.Top; Nam.Pop;
+      if (tmpNam='')or(tmpNam[1]=' ') then halt(1101);//Assignment Error
+      Assign(tmpNam,NumParam); NumParamBase.Pop; NumParamName.Pop;
+     End
+     Else
+     Begin
       tmp2:=Vau.top; Vau.pop; Nam.pop;
       tmpo:=Vau.top; tmp1:=tmpo; Vau.pop; tmpnam:=Nam.top; Nam.pop;
       case tmp0 of
@@ -1224,7 +1249,9 @@ var
      if GetBetaSafe(s,i)='//' then break;
      now:=GetBeta(s,i);
      if (now='')or(now=';') then break;
-     if now=',' then Flush(Pri['(']+1) else
+     If Now='}' Then Continue;
+     If Now='{' Then Begin NumC:=GetGama(S,i,'}'); NoteFlag:=I>Length(S)+1; If NoteFlag Then Break; Continue End;
+     if now=',' then Begin Flush(Pri['(']+1); LastAlpha:=False End else
      if now=#39 then
      begin
       NumC:='';
@@ -1256,7 +1283,12 @@ var
                                           Else NumParamName.pushback(' array...') end;
       if (mean=')')or(mean=']') then Opt.pop
                                 else Opt.pushback(mean);
-      If mean=']' Then Begin NumParamCharge;
+      If mean=']' Then
+      If GetBetaSafe(S,I)=':='
+                  Then Begin Now:=GetBeta(S,I);
+                             Mean:=':';
+                             Opt.PushBack('w') End
+                  Else Begin NumParamCharge;
                              If NumParamName.Top=' def...' Then
                              Begin
                               Tmp1:=Get(Nam.top,NumParam);
@@ -1499,6 +1531,12 @@ var
  begin
   If ExitFlag Then Exit(3);
   Exec:=0;
+  If NoteFlag Then
+  Begin
+   i:=Pos('}',Os);
+   If i>0 Then Begin Delete(OS,1,i+1); NoteFlag:=False End
+   Else Exit
+  End;
   s:=lowercase(os);
   i:=1;
   while (i<=length(s))and(GetBetaSafe<>'//') do
@@ -1733,6 +1771,11 @@ var
   Begin If (A.Size<1)Or(A.Items[1].Tp<>PSInt) Then Exit(PSNil);
         Exit(pVList(PublicObjOuter^)^.Items[Longint(a.Items[1])]) End;
 
+  Function __Array_ItemsA(Const A:VList):PSValue;
+  Begin If (A.Size<2)Or(A.Items[1].Tp<>PSInt) Then Exit(PSNil);
+        pVList(PublicObjOuter^)^.Items[Longint(a.Items[1])]:=NewPSValue(a.Items[2]);
+        Exit(PS1) End;
+
 
  procedure PSLib.UsesSystem;
  begin
@@ -1774,7 +1817,7 @@ var
   Assign('writef',@__writef);
   Assign('writelnf',@__writelnf);
 
-  Assign('array',NewLocalObj('array','items'));
+  Assign('array',NewLocalObj('array','items','itemsa'));
   AssignObj('array.create',@__array_create);
   AssignObj('array.clear',@__array_clear);
   AssignObj('array.size',@__array_size);
@@ -1785,6 +1828,7 @@ var
   AssignObj('array.delete',@__array_delete);
   AssignObj('array.reverse',@__array_reverse);
   AssignObj('array.items',@__array_Items);
+  AssignObj('array.itemsa',@__array_ItemsA);
 
 
 
@@ -1800,6 +1844,7 @@ begin
  Pri[']']:=15;
  Pri[')']:=15;
  Pri[':']:=20; //:=
+ Pri['w']:=20; //[]:=
  Pri['=']:=30;
  Pri['b']:=30; //<>
  Pri['<']:=30;
@@ -1822,8 +1867,8 @@ begin
  Pri['_']:=90;  //-
 
  acceptset:=['A'..'Z','a'..'z','0'..'9','_','$','&','%','.'];
-   pattset:=['(',')','[',']',#39,',',';'];
-    runset:=['!'..'/',':'..'@','['..'`']-['$','&','%','.'];
+   pattset:=['(',')','[',']',#39,',',';','{','}'];
+    runset:=['!'..'/',':'..'@','['..'`','{','}']-['$','&','%','.'];
 
  PS0:=PSValue(0);
  PS1:=PSValue(1);
