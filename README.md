@@ -154,10 +154,14 @@ WriteLn(x.real,' ',x.imag)
 >>### 特殊的类（array）
 ```
 function print()For i:=1 to w.Size Do Write(w[i],' ');WriteLn;
+{
+    新增大括号注释，可以将一长段注释，也可以在语句中间位置注释，相当于空格的存在
+    一般不要在关键词语句判定区使用大括号注释（如紧接function,if之后）
+}
 u:=array
-u.Create
+u.Create               {第一种构造数组的方法，先赋成数组array再初始化create}
 u.PushBack(2,'xyz',2.7183)
-v:=['Test',666,0.10]
+v:=['Test',666,0.10]   {第二种构造数组的方法，用[若干元素]表示数组}
 w:=u+v
 Print
 w.Reverse(1,6)
