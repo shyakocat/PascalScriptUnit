@@ -3,30 +3,13 @@ unit PascalScriptUnit;
 
 interface
 
-uses SysUtils,Classes,Variants;
+uses CommonTypeUnit,SysUtils,Classes,Variants;
 
 var
  Pri:array[char(0)..char(255)]of byte;
  acceptset,runset,pattset:set of char;
 
 type
- generic List<T>=object
-  Size:longint;
-  Items:array of T;
-  procedure swap(var a,b:T);
-  procedure resize(n:longint);
-  procedure clear;
-  procedure pushback(const value:T);
-  procedure pop;
-  procedure insert(p:longint;const value:T);
-  procedure insert(p:longint;const L:List);
-  procedure delete(p,Len:longint);
-  procedure reverse(l,r:longint);
-  procedure fill(l,r:longint;const x:T);
-  function clone(l,r:longint):List;
-  function top:T;
-  function isnil:boolean;
- end;
 
  HashStr=object
   const E:int64=257;
@@ -40,7 +23,7 @@ type
   Function Clone:HashStr;
  end;
 
-
+Type
  vTypeMode=(PSNone,
             PSInt,
             PSDouble,
@@ -53,8 +36,10 @@ type
 
  VList=specialize List<PSValue>;
  SList=specialize List<Ansistring>;
- TFunc=function(const Param:VList):PSValue;
+ IList=Specialize List<Longint>;
  pVList=^VList;
+
+ TFunc=function(const Param:VList):PSValue;
 
  OutFunc=Record Caption:Ansistring; main:TFunc End;
  LocalFunc=Record Caption:Ansistring; Carry,Code:SList End;
@@ -71,17 +56,64 @@ type
  pLocalObj=^LocalObj;
  pPSValue=^PSValue;
 
+Const
+ //GetAlpha -> TextContent
+ //GetBeta  -> MarkContent
+ PSLibError:Array[0..25]Of Ansistring=(
+  '[Error000]:Transfer Variable Type Fail',
+  '[Error001]:Calculate Variable Fail',
+  '[Error002]:Variable Cannot Found',
+  '[Error003]:Function Parameter Number Is Wrong',
+  '[Error004]:Assign Variable Fail',
+  '[Error005]:Object Or ObjectMember Cannot Found',
+  '[Error006][KeywordError]:"for ..." Must Follow ":="',
+  '[Error007][KeywordError]:"for ...:=" Must Follow "to"',
+  '[Error008][KeywordError]:"for ...:=... to ..." Must Follow "do"',
+  '[Error009][KeywordError]:"While ..." Must Follow "do"',
+  '[Error010][KeywordError]:"function" Must Follow <TextContent>',
+  '[Error011][KeywordError]:"function ..." Must Follow "("',
+  '[Error012][KeywordError]:"function ...(" Must Follow Some <TextContent>',
+  '[Error013][KeywordError]:"function ...(..." Must Follow "," or ")"',
+  '[Error014][KeywordError]:"object" Must Follow <TextContent>',
+  '[Error015][KeywordError]:"object ..." Must Follow "("',
+  '[Error016][KeywordError]:"object ...(" Must Follow Some <TextContent>',
+  '[Error017][KeywordError]:"object ...(..." Must Follow "," or ")"',
+  '[Error018][SystemFunctionError]:Read() Should Be {Int/Double/Char/String}',
+  '[Error019][SystemFunctionError]:Abs() Should Be {Int/Double}',
+  '[Error020][SystemFunctionError]:Sqr() Should Be {Int/Double}',
+  '[Error021][SystemFunctionError]:Sqrt() Should Be {Int/Double}',
+  '[Error022][SystemFunctionError]:Round() Should Be {Int/Double}',
+  '[Error023][SystemFunctionError]:Trunc() Should Be {Int/Double}',
+  '[Error024][SystemFunctionError]:Copy() Should Be {String,Int,Int}',
+  '[Error025][SystemFunctionError]:Pos() Should Be {String,String}');
 
- PSLib=object
-   size:longint;
+
+
+ cl_ignore=0;
+ cl_terminate=1;
+ cl_halt=2;
+
+Type
+
+ PSLib=Packed object
+   Size:longint;
    Vname:HashStr;
    VData:VList;
+
+   ComplieLevel:ShortInt;
+    //0 = Ignore Any Error      And     Record Error To ErrorList
+    //1 = Terminate The Code    And     Record Error To ErrorList
+    //2 = Halt The Program
+   DangerTerminate:Boolean;
+   ErrorList:IList;
 
    NoteFlag:Boolean;
    LazNet:specialize List<longint>;
    Patt,Nest,ForBegin,ForEnd,LazTag:longint;
    Script,Carry:SList;
    ScriptDirector:ansistring;
+   Procedure Reg(_E:Longint);
+   Procedure SetComplieLevel(_c:ShortInt);
    function Find(const _name:string):longint;
    Function Add(const _name:string;_type:vtypemode):Longint;
    Procedure Assign(Const _Name:String;Const _Value:PSValue);
@@ -258,41 +290,42 @@ var
 
  Operator :=(Const A:PSVALUE)B:Longint;
  Begin
-  If a.tp<>PSInt Then Halt(1004);//Trans Error
+  If a.tp<>PSInt Then Begin PublicPSLib^.Reg(1); Exit End; //Trans Error
   Exit(PInt(a.p)^)
  End;
 
  Operator :=(Const A:PSVALUE)B:Extended;
  Begin
   If a.tp=PSInt Then Exit(PInt(a.p)^);
-  If a.tp<>PSDouble Then Halt(1004);
+  If a.tp<>PSDouble Then Begin PublicPSLib^.Reg(1); Exit End;
   Exit(PDouble(a.p)^)
  End;
 
  Operator :=(Const A:PSVALUE)B:Char;
  Begin
-  If a.tp<>PSChar Then Halt(1004);
+  If a.tp<>PSChar Then Begin PublicPSLib^.Reg(1); Exit End;
   Exit(PChar(a.p)^)
  End;
 
  Operator :=(Const A:PSVALUE)B:Ansistring;
  Begin
   If a.tp=PSChar Then Exit(PChar(a.p)^);
-  If a.tp<>PSStr Then Halt(1004);
+  If a.tp<>PSStr Then Begin PublicPSLib^.Reg(1); Exit End;
   Exit(PAnsistring(a.p)^)
  End;
 
  Operator :=(Const A:PSVALUE)B:OutFunc;
  Begin
-  If a.tp<>PSFunc Then Halt(1004);
+  If a.tp<>PSFunc Then Begin PublicPSLib^.Reg(1); Exit End;
   Exit(POutFunc(a.p)^)
  End;
 
  Operator :=(Const A:PSVALUE)B:LocalFunc;
  Begin
-  If a.tp<>PSFuncLocal Then Halt(1004);
+  If a.tp<>PSFuncLocal Then PublicPSLib^.Reg(1);
   Exit(PLocalFunc(a.p)^)
  End;
+
 {
  Function Clone(Const A:LocalObj):LocalObj;
  Var Fake:pLocalObj;
@@ -309,7 +342,7 @@ var
 
  Operator :=(Const A:PSVALUE)B:LocalObj;
  Begin
-  If a.tp<>PSObj then Halt(1004);
+  If a.tp<>PSObj then Begin PublicPSLib^.Reg(1); Exit End;
   Exit(pLocalObj(a.p)^)
  End;
 
@@ -330,7 +363,7 @@ var
    PSInt   :Exit(PSValue(-Longint(a)));
    PSDouble:Exit(PSVAlue(-Extended(A)))
   End;
-  Halt(1003)//Calc Error
+  PublicPSLib^.Reg(1)//Calc Error
  End;
 
  Operator +(Const a,b:PSValue)C:PSValue;
@@ -350,7 +383,7 @@ var
         Result.tp:=PSObj; New(pLocalObj(Result.p));
         pLocalObj(Result.p)^:=pLocalObj(A.p)^; pLocalObj(Result.p)^.Outer:=Tmp;
         Exit End;
-  Halt(1003)
+  PublicPSLib^.Reg(1)
  End;
 
  Operator -(Const a,b:PSValue)C:PSValue;
@@ -359,7 +392,7 @@ var
    Exit(PSValue(LongInt(A)-LongInt(B)));
   If (a.tp in CalcSet)And(b.tp in CalcSet) Then
    Exit(PSValue(Extended(A)-Extended(B)));
-  Halt(1003)
+  PublicPSLib^.Reg(1)
  End;
 
  Operator *(Const a,b:PSValue)C:PSValue;
@@ -368,28 +401,28 @@ var
    Exit(PSValue(LongInt(A)*LongInt(B)));
   If (a.tp in CalcSet)And(b.tp in CalcSet) Then
    Exit(PSValue(Extended(A)*Extended(B)));
-  Halt(1003)
+  PublicPSLib^.Reg(1)
  End;
 
  Operator /(Const a,b:PSValue)C:PSValue;
  Begin
   If (a.tp in CalcSet)And(b.tp in CalcSet) Then
    Exit(PSValue(Extended(A)/Extended(B)));
-  Halt(1003)
+  PublicPSLib^.Reg(1)
  End;
 
  Operator Div(Const a,b:PSValue)C:PSValue;
  Begin
   If (a.tp=PSInt)And(b.tp=PSInt) Then
    Exit(PSValue(LongInt(A) Div LongInt(B)));
-  Halt(1003)
+  PublicPSLib^.Reg(1)
  End;
 
  Operator Mod(Const a,b:PSValue)C:PSValue;
  Begin
   If (a.tp=PSInt)And(b.tp=PSInt) Then
    Exit(PSValue(Longint(A) Mod Longint(B)));
-  Halt(1003)
+  PublicPSLib^.Reg(1)
  End;
 
  Operator =(Const a,b:PSValue)C:PSValue;
@@ -441,42 +474,42 @@ var
  Begin
   If a.tp=PSInt Then
    Exit(PSValue(Not Longint(A)));
-  Halt(1003)
+  PublicPSLib^.Reg(1)
  End;
 
  Operator And(Const a,b:PSValue)C:PSValue;
  Begin
   If (a.tp=PSInt)And(b.tp=PSInt) Then
    Exit(PSValue(Longint(A) And Longint(B)));
-  Halt(1003)
+  PublicPSLib^.Reg(1)
  End;
 
  Operator Or(Const a,b:PSValue)C:PSValue;
  Begin
   If (a.tp=PSInt)And(b.tp=PSInt) Then
    Exit(PSValue(Longint(A) Or Longint(B)));
-  Halt(1003)
+  PublicPSLib^.Reg(1)
  End;
 
  Operator Xor(Const a,b:PSValue)C:PSValue;
  Begin
   If (a.tp=PSInt)And(b.tp=PSInt) Then
    Exit(PSValue(Longint(A) Xor Longint(B)));
-  Halt(1003)
+  PublicPSLib^.Reg(1)
  End;
 
  Operator Shl(Const a,b:PSValue)C:PSValue;
  Begin
   If (a.tp=PSInt)And(b.tp=PSInt) Then
    Exit(PSValue(Longint(A) Shl Longint(B)));
-  Halt(1003)
+  PublicPSLib^.Reg(1)
  End;
 
  Operator Shr(Const a,b:PSValue)C:PSValue;
  Begin
   If (a.tp=PSInt)And(b.tp=PSInt) Then
    Exit(PSValue(Longint(A) Shr Longint(B)));
-  Halt(1003)
+  PublicPSLib^.Reg(1)
  End;
 
  Procedure Free(Var a:PSValue);
@@ -550,92 +583,6 @@ var
   End
  End;
 
-
- function List.isnil:boolean;
- begin
-  exit(Size=0)
- end;
-
- procedure List.clear;
- begin
-  Size:=0;
-  SetLength(Items,0)
- end;
-
- procedure List.resize(n:longint);
- begin
-  Size:=n;
-  if (Size<10)and(high(Items)<10) then setlength(Items,10) else
-  if Size>=high(Items) then setlength(Items,Size<<1) else
-  if Size<high(Items)>>2 then setlength(Items,Size>>1)
- end;
-
- procedure List.pushback(const value:T);
- begin
-  Resize(size+1);
-  Items[Size]:=value
- end;
-
- procedure List.pop;
- begin
-  if Size>0 then dec(Size);
-  Resize(Size)
- end;
-
- function List.top:T;
- begin
-  exit(Items[size])
- end;
-
- procedure List.swap(var a,b:T);
- var c:T; begin c:=a; a:=b; b:=c end;
-
- procedure List.Reverse(l,r:longint);
- var i:longint;
- begin
-  for i:=l to (l+r)>>1 do swap(Items[i],Items[l+r-i])
- end;
-
- function List.Clone(l,r:longint):List;
- var i:longint;
- begin
-  Clone.Clear;
-  if l>r then exit;
-  for i:=l to r do Clone.pushback(Items[i])
- end;
-
- procedure List.insert(p:longint;const value:T);
- var i:longint;
- begin
-  if p>Size then exit;
-  Resize(Size+1);
-  for i:=Size downto p+1 do Items[i]:=Items[i-1];
-  Items[p]:=value
- end;
-
- procedure List.insert(p:longint;const L:List);
- var i:longint;
- begin
-  if p>Size then exit;
-  Resize(Size+L.Size);
-  for i:=Size downto p+L.Size do Items[i]:=Items[i-L.Size];
-  for i:=1 to L.Size do Items[p-1+i]:=L.Items[i]
- end;
-
- procedure List.delete(p,Len:longint);
- var i:longint;
- begin
-  if p>Size then exit;
-  if p-1+Len>=Size then begin Resize(p-1); exit end;
-  for i:=p+Len to Size do Items[i-Len]:=Items[i];
-  Resize(Size-Len)
- end;
-
- procedure List.fill(l,r:longint;const x:T);
- var i:longint;
- begin
-  for i:=l to r do Items[i]:=x
- end;
 
  function HashStr.hashcode(const s:ansistring):longint;
  var i:longint;
@@ -728,13 +675,31 @@ var
  procedure PSLib.Clear;
  begin
   Size:=0;
+  ComplieLevel:=0;
+  DangerTerminate:=False;
   NoteFlag:=False;
   vName.Clear;
   vData.Clear;
+  ErrorList.Clear;
   LazNet.Clear;
   Patt:=0;
   Nest:=0;
  end;
+
+ Procedure PSLib.Reg(_E:Longint);
+ Begin
+  DangerTerminate:=True;
+  Case ComplieLevel Of
+   cl_ignore   :Begin ErrorList.PushBack(_E); DangerTerminate:=False End;
+   cl_terminate:Begin ErrorList.PushBack(_E); DangerTerminate:=True End;
+   cl_halt:Halt(_E+1000)
+  End
+ End;
+
+ Procedure PSLib.SetComplieLevel(_c:ShortInt);
+ Begin
+  ComplieLevel:=_c
+ End;
 
  function PSLib.Find(const _name:string):longint;
  var i:longint;
@@ -753,10 +718,10 @@ var
  Function PSLib.Assign(Const _Name:String;Const _Param:VList):PSValue;
  Var i:Longint;
  Begin
-  i:=Find(_Name); If I=-1 Then Halt(1001);//Get Fail
+  i:=Find(_Name); If I=-1 Then Begin Reg(2); Exit End;//Get Fail
   Result:=vData.Items[i];
   Case Result.Tp Of
-   PSStr      :If _Param.Size<2 Then Halt(1099){Parameter Error}
+   PSStr      :If _Param.Size<2 Then Begin Reg(4); Exit End //Parameter Error
                Else Begin pAnsistring(Result.P)^[Longint(_Param.Items[1])]:=Ansistring(_Param.Items[2])[1]; Exit(PS1) End;
    PSObj      :Exit(ExecObj(pLocalObj(Result.p)^,pLocalObj(Result.p)^.FrameWrite,_Param));
   End
@@ -813,7 +778,7 @@ var
  function PSLib.Get(const _name:string):PSValue;
  var i:longint;
  begin
-  i:=Find(_Name); If I=-1 Then Halt(1001);//Get Fail
+  i:=Find(_Name); If I=-1 Then Begin Reg(2); Exit End;//Get Fail
   Exit(vData.Items[i])
  end;
 
@@ -826,10 +791,10 @@ var
   Begin
    ObjName:=Copy(_Name,1,i-1);
    CarName:=Copy(_Name,1+i,Length(_Name));
-   i:=Find(ObjName); if (i=-1)or(vData.Items[i].tp<>PSObj) then Halt(1001);
+   i:=Find(ObjName); if (i=-1)or(vData.Items[i].tp<>PSObj) then Begin Reg(2); Exit(-1) End;
    Exit(ExecObj(pLocalObj(vData.Items[i].p)^,CarName,_Param))
   End;
-  i:=Find(_Name); If I=-1 Then Halt(1001);//Get Fail
+  i:=Find(_Name); If I=-1 Then Begin Reg(2); Exit End;//Get Fail
   Result:=vData.Items[i];
   Case Result.Tp Of
    PSFunc     :Exit(pOutFunc(Result.p)^.main(_Param));
@@ -887,11 +852,12 @@ var
   SrcNam:SList;
   SrcVal:VList;
  Begin
+  If DangerTerminate Then Exit(PSNil);
   SrcNam.Clear;
   SrcVal.Clear;
   With LF Do
   Begin
-   If _Param.Size<>Carry.Size Then Halt(1301);
+   If _Param.Size<>Carry.Size Then Begin Reg(3); Exit End;
    SrcNam.PushBack('result');
    d:=Find('result');
    If d=-1 Then d:=Add('result',PSInt);
@@ -924,6 +890,7 @@ var
   Procedure Seto;Begin PublicObjOuter:=opFlag; PublicPSLib:=opPSLib End;
 
  Begin
+  If DangerTerminate Then Exit(PSNil);
   opFlag:=PublicObjOuter;
   opPSLib:=PublicPSLib;
   With LO Do
@@ -969,6 +936,7 @@ var
   _ScriptD:ansistring;
  begin
   Exec:=0;
+  If DangerTerminate Then Exit;
   if ss.Size<1 then exit;
   _Patt:=Patt;
   _Nest:=Nest;
@@ -985,6 +953,7 @@ var
   Carry.Clear;
   ScriptDirector:='';
   for i:=1 to _Script.Size do
+  If DangerTerminate Then Break Else
    case Exec(_Script.Items[i]) of
     1:begin Exec:=1; break end;
     2:begin Exec:=2; break end;
@@ -1134,7 +1103,7 @@ var
      If Tmp0='w' Then
      Begin
       NumParamCharge; tmpNam:=Nam.Top; Nam.Pop;
-      if (tmpNam='')or(tmpNam[1]=' ') then halt(1101);//Assignment Error
+      if (tmpNam='')or(tmpNam[1]=' ') then Begin Reg(4); Exit End;//Assignment Error
       Assign(tmpNam,NumParam); NumParamBase.Pop; NumParamName.Pop;
      End
      Else
@@ -1159,13 +1128,14 @@ var
        '>':Vau.pushback(tmp1>tmp2);
        'x':Vau.pushback(tmp1<=tmp2);
        'y':Vau.pushback(tmp1>=tmp2);
-       ':':begin if (tmpNam='')or(tmpNam[1]=' ') then halt(1101);//Assignment Error
+       ':':begin if (tmpNam='')or(tmpNam[1]=' ') then Begin Reg(4); Exit End;//Assignment Error
                  if Pos('.',tmpNam)>0 Then AssignObj(tmpNam,tmp2) Else
                  If Tmp2.Tp=PSObj Then Assign(TmpNam,Tmp2)
                  Else Assign(tmpNam,tmp2); Vau.PushBack(NewPSValue(Tmp2)) End
       end
      end;
-     Nam.pushback(' pending...')
+     Nam.pushback(' pending...');
+     If DangerTerminate Then Exit
     end
    end;
 
@@ -1216,10 +1186,10 @@ var
              If D>0 Then Begin
               ObjName:=Copy(Now,1,D-1);
               CarName:=Copy(Now,1+D,Length(Now));
-              If (ObjName='')Or(CarName='') Then Halt(1501);
-              D:=Find(ObjName); If (D=-1)Or(vData.Items[d].tp<>PSObj) Then Halt(1501);
+              If (ObjName='')Or(CarName='') Then Begin Reg(5); Exit End;
+              D:=Find(ObjName); If (D=-1)Or(vData.Items[d].tp<>PSObj) Then Begin Reg(5); Exit End;
               With pLocalObj(vData.Items[d].p)^ Do
-              Begin D:=DataIndex.Find(CarName); If D=-1 Then Halt(1501) End
+              Begin D:=DataIndex.Find(CarName); If D=-1 Then Begin Reg(5); Exit End End
              End Else Begin
               d:=Find(Now);
               if d=-1 then Assign(now,PS0)
@@ -1305,7 +1275,8 @@ var
                              NumParamBase.Pop; NumParamName.Pop End;
       LastAlpha:=(mean=')')or(mean=']')
      end;
-    end
+    end;
+    If DangerTerminate Then Exit
    until ExitFlag;
    If ExitFlag Then Exit(PSNil);
    Flush(0);
@@ -1362,25 +1333,25 @@ var
     'if':begin i:=bias; t:=GetDeltaSafe(s,i); i:=Bias; exit('if '+t) end;
     'for':begin i:=Bias; GetEpsilon:='for ';
                 t:=GetAlpha(s,i); if Find(t)=-1 then Add(t,PSInt); GetEpsilon:=GetEpsilon+t;
-                if GetBeta(s,i)<>':=' then halt(1202); GetEpsilon:=GetEpsilon+':=';
+                if GetBeta(s,i)<>':=' then Begin Reg(6); Exit End; GetEpsilon:=GetEpsilon+':=';
                 GetEpsilon:=GetEpsilon+GetDeltaSafe(s,i); i:=Bias;
-                if LowerCase(GetAlpha(s,i))<>'to' then halt(1203); GetEpsilon:=GetEpsilon+' to ';
+                if LowerCase(GetAlpha(s,i))<>'to' then Begin Reg(7); Exit End; GetEpsilon:=GetEpsilon+' to ';
                 GetEpsilon:=GetEpsilon+GetDeltaSafe(s,i); i:=Bias;
-                if LowerCase(GetAlpha(s,i))<>'do' then halt(1204); GetEpsilon:=GetEpsilon+' do' end;
+                if LowerCase(GetAlpha(s,i))<>'do' then Begin Reg(8); Exit End; GetEpsilon:=GetEpsilon+' do' end;
     'while':begin i:=Bias; GetEpsilon:='while ';
                   GetEpsilon:=GetEpsilon+GetDeltaSafe(s,i); i:=Bias;
-                  if LowerCase(GetAlpha(s,i))<>'do' then halt(1205); GetEpsilon:=GetEpsilon+' do' end;
+                  if LowerCase(GetAlpha(s,i))<>'do' then Begin Reg(9); Exit End; GetEpsilon:=GetEpsilon+' do' end;
     'function':Begin i:=Bias; GetEpsilon:='function ';
-                     t:=GetAlpha(s,i); if t='' then halt(1206); GetEpsilon:=GetEpsilon+t;
-                     if GetBeta(s,i)<>'(' Then halt(1207); GetEpsilon:=GetEpsilon+'(';
-                     While GetBeta(s,i)<>')' Do Begin t:=GetAlpha(s,i); if t='' Then Halt(1206); GetEpsilon:=GetEpsilon+t;
-                     Case GetBetaSafe(s,i) Of ',':GetEpsilon:=GetEpsilon+','; ')':; Else Halt(1208) End; End;
+                     t:=GetAlpha(s,i); if t='' then Begin Reg(10); Exit End; GetEpsilon:=GetEpsilon+t;
+                     if GetBeta(s,i)<>'(' Then Begin Reg(11); Exit End; GetEpsilon:=GetEpsilon+'(';
+                     While GetBeta(s,i)<>')' Do Begin t:=GetAlpha(s,i); if t='' Then Begin Reg(12); Exit End; GetEpsilon:=GetEpsilon+t;
+                     Case GetBetaSafe(s,i) Of ',':GetEpsilon:=GetEpsilon+','; ')':; Else Begin Reg(13); Exit End End; End;
                      GetEpsilon:=GetEpsilon+')' End;
     'object':Begin i:=Bias; GetEpsilon:='object ';
-                   t:=GetAlpha(s,i); if t='' then halt(1209); GetEpsilon:=GetEpsilon+t;
-                   if GetBeta(s,i)<>'(' Then halt(1210); GetEpsilon:=GetEpsilon+'(';
-                   While GetBeta(s,i)<>')' Do Begin t:=GetAlpha(s,i); if t='' Then Halt(1209); GetEpsilon:=GetEpsilon+t;
-                   Case GetBetaSafe(s,i) Of ',':GetEpsilon:=GetEpsilon+','; ')':; Else Halt(1211) End; End;
+                   t:=GetAlpha(s,i); if t='' then Begin Reg(14); Exit ENd; GetEpsilon:=GetEpsilon+t;
+                   if GetBeta(s,i)<>'(' Then Begin Reg(15); Exit ENd; GetEpsilon:=GetEpsilon+'(';
+                   While GetBeta(s,i)<>')' Do Begin t:=GetAlpha(s,i); if t='' Then Begin Reg(16); Exit End; GetEpsilon:=GetEpsilon+t;
+                   Case GetBetaSafe(s,i) Of ',':GetEpsilon:=GetEpsilon+','; ')':; Else Begin Reg(17); Exit End End; End;
                    GetEpsilon:=GetEpsilon+')' End;
     else begin GetEpsilon:=' '+GetDeltaSafe(s,i); i:=Bias end
    end
@@ -1453,12 +1424,12 @@ var
              t:=GetAlpha;
              d:=Find(t);
              if d=-1 then Add(t,PSInt);
-             if GetBeta<>':=' then halt(1202);
+             if GetBeta<>':=' then Begin Reg(6); Patt:=0; Exit End;
              ForBegin:=Longint(GetDelta);
-             if GetAlpha<>'to' then halt(1203);
+             if GetAlpha<>'to' then Begin Reg(7); Patt:=0; Exit End;
              ForEnd:=Longint(GetDelta);
              ScriptDirector:=t;
-             if GetAlpha<>'do' then halt(1204);
+             if GetAlpha<>'do' then Begin Reg(8); Patt:=0; Exit End;
              Patt:=Patt or 8
             end;
     'while':begin
@@ -1467,36 +1438,37 @@ var
              Patt:=Patt or 16;
              ScriptDirector:=GetDeltaSafe;
              i:=Bias;
-             if GetAlpha<>'do' then halt(1205)
+             if GetAlpha<>'do' then Begin Reg(9); Patt:=0; Exit End;
             end;
     'function':Begin
              FirstOfAll;
              i:=Bias;
-             ScriptDirector:=GetAlpha; If ScriptDirector='' Then Halt(1206);
-             If GetBeta<>'(' Then Halt(1207);
+             ScriptDirector:=GetAlpha; If ScriptDirector='' Then Begin Reg(10); Patt:=0; Exit End;
+             If GetBeta<>'(' Then Begin Reg(11); Patt:=0; Exit End;
              While GetBeta<>')' Do
              Begin
               t:=GetAlpha;
-              If t='' Then Halt(1206);
+              If t='' Then Begin Reg(12); Patt:=0; Exit End;
               Case GetBetaSafe Of
                ')',',':;
-               Else Halt(1208)
+               Else Begin Reg(13); Patt:=0; Exit End
               End;
               Carry.PushBack(T)
              End;
              Patt:=Patt Or 32
             End;
      'object':Begin
+             FirstOfAll;
              i:=Bias;
-             ScriptDirector:=GetAlpha; If ScriptDirector='' Then Halt(1209);
-             If GetBeta<>'(' Then Halt(1210);
+             ScriptDirector:=GetAlpha; If ScriptDirector='' Then Begin Reg(14); Patt:=0; Exit End;
+             If GetBeta<>'(' Then Begin Reg(15); Patt:=0; Exit End;
              While GetBeta<>')' Do
              Begin
               t:=GetAlpha;
-              If t='' Then Halt(1209);
+              If t='' Then Begin Reg(16); Patt:=0; Exit End;
               Case GetBetaSafe Of
                ')',',':;
-               Else Halt(1211)
+               Else Begin Reg(17); Patt:=0; Exit End
               End;
               Carry.PushBack(T)
              End;
@@ -1529,6 +1501,8 @@ var
   end;
 
  begin
+  If DangerTerminate Then Exit;
+  PublicPSLib:=@Self;
   If ExitFlag Then Exit(3);
   Exec:=0;
   If NoteFlag Then
@@ -1540,6 +1514,7 @@ var
   s:=lowercase(os);
   i:=1;
   while (i<=length(s))and(GetBetaSafe<>'//') do
+  If DangerTerminate Then Exit Else
   if Patt=0 then case Analysis of 1:exit(1); 2:exit(2); 3:exit(3) end
             else begin GetLazy; if Exec<>0 then exit end
  end;
@@ -1559,7 +1534,7 @@ var
     PSDouble:Begin Read(_Extended); pdouble(a.Items[i].p)^:=_Extended End;
     PSChar:Begin Read(_Char); pChar(a.Items[i].p)^:=_Char End;
     PSStr:Begin Read(_Ansistring); pAnsistring(a.Items[i].p)^:=_Ansistring End;
-    Else Halt(1005); //Read Error
+    Else Begin PublicPSLib^.Reg(18); Exit End //Read Error
    End;
    Exit(PS1)
   End;
@@ -1588,81 +1563,112 @@ var
   var i:longint; begin __min:=a.Items[1]; for i:=2 to a.Size do if Longint(a.Items[i]<__min)=1 then __min:=a.Items[i] end;
 
   function __odd(const a:VList):PSValue;
-  begin exit(a.Items[1] and PS1) end;
+  begin If a.Size<1 Then Begin PublicPSLib^.Reg(3); Exit End;
+        exit(a.Items[1] and PS1) end;
 
   function __abs(const a:VList):PSValue;
-  begin If a.Items[1].Tp=PSInt    Then Exit(Abs(Longint(a.Items[1])));
-        If a.Items[1].Tp=PSDouble Then Exit(Abs(Extended(a.Items[1]))); Halt(1003) end;
+  begin If a.Size<1 Then Begin PublicPSLib^.Reg(3); Exit End;
+        If a.Items[1].Tp=PSInt    Then Exit(Abs(Longint(a.Items[1])));
+        If a.Items[1].Tp=PSDouble Then Exit(Abs(Extended(a.Items[1])));
+        PublicPSLib^.Reg(19) end;
 
   function __sqr(const a:VList):PSValue;
-  begin If a.Items[1].Tp=PSInt    Then exit(sqr(Longint(a.Items[1])));
-        If a.Items[1].Tp=PSDouble Then exit(sqr(Extended(a.Items[1]))); Halt(1003) end;
+  begin If a.Size<1 Then Begin PublicPSLib^.Reg(3); Exit End;
+        If a.Items[1].Tp=PSInt    Then exit(sqr(Longint(a.Items[1])));
+        If a.Items[1].Tp=PSDouble Then exit(sqr(Extended(a.Items[1])));
+        PublicPSLib^.Reg(20) end;
 
   function __sqrt(const a:VList):PSValue;
-  begin If a.Items[1].tp in CalcSet Then exit(Extended(sqrt(PSValue(a.Items[1])))); Halt(1003) end;
+  begin If a.Size<1 Then Begin PublicPSLib^.Reg(3); Exit End;
+        If a.Items[1].tp in CalcSet Then exit(Extended(sqrt(PSValue(a.Items[1]))));
+        PublicPSLib^.Reg(21) end;
 
   function __round(const a:VList):PSValue;
-  begin If a.Items[1].Tp in CalcSet Then exit(round(Extended(a.Items[1]))); Halt(1003) end;
+  begin If a.Size<1 Then Begin PublicPSLib^.Reg(3); Exit End;
+        If a.Items[1].Tp in CalcSet Then exit(round(Extended(a.Items[1])));
+        PublicPSLib^.Reg(22) end;
 
   function __trunc(const a:VList):PSValue;
-  begin If a.Items[1].Tp in CalcSet Then exit(trunc(Extended(a.Items[1]))); Halt(1003) end;
+  begin If a.Size<1 Then Begin PublicPSLib^.Reg(3); Exit End;
+        If a.Items[1].Tp in CalcSet Then exit(trunc(Extended(a.Items[1])));
+        PublicPSLib^.Reg(23) end;
 
   function __copy(const a:VList):PSValue;
-  begin If (a.Items[1].Tp in StrSet)And(a.Items[2].Tp=PSInt)And(a.Items[3].Tp=PSInt) Then
-        exit(copy(Ansistring(a.Items[1]),Longint(a.Items[2]),Longint(a.Items[3]))); Halt(1003) end;
+  begin If a.Size<>3 Then Begin PublicPSLib^.Reg(3); Exit End;
+        If (a.Items[1].Tp in StrSet)And(a.Items[2].Tp=PSInt)And(a.Items[3].Tp=PSInt) Then
+        exit(copy(Ansistring(a.Items[1]),Longint(a.Items[2]),Longint(a.Items[3])));
+        PublicPSLib^.Reg(24) end;
 
   function __pos(const a:VList):PSValue;
-  begin If (a.Items[1].Tp In StrSet)And(a.Items[2].Tp IN StrSet) Then
-        exit(pos(Ansistring(a.Items[1]),Ansistring(a.Items[2]))); Halt(1003) end;
+  begin If a.Size<>2 Then Begin PublicPSLib^.Reg(3); Exit End;
+        If (a.Items[1].Tp In StrSet)And(a.Items[2].Tp IN StrSet) Then
+        exit(pos(Ansistring(a.Items[1]),Ansistring(a.Items[2])));
+        PublicPSLib^.Reg(25) end;
 
   function __upcase(const a:VList):PSValue;
-  begin exit(upcase(Ansistring(a.Items[1]))) end;
+  begin If a.Size<1 Then Begin PublicPSLib^.Reg(3); Exit End;
+        exit(upcase(Ansistring(a.Items[1]))) end;
 
   function __lowercase(const a:VList):PSValue;
-  begin exit(lowercase(Ansistring(a.Items[1]))) end;
+  begin If a.Size<1 Then Begin PublicPSLib^.Reg(3); Exit End;
+        exit(lowercase(Ansistring(a.Items[1]))) end;
 
   function __Str(const a:VList):PSValue;
-  Begin Exit(IntToStr(Longint(A.Items[1]))) End;
+  Begin If a.Size<1 Then Begin PublicPSLib^.Reg(3); Exit End;
+        Exit(IntToStr(Longint(A.Items[1]))) End;
 
   function __Val(const a:VList):PSValue;
-  Begin Exit(StrToInt(Ansistring(A.Items[1]))) End;
+  Begin If a.Size<1 Then Begin PublicPSLib^.Reg(3); Exit End;
+        Exit(StrToInt(Ansistring(A.Items[1]))) End;
 
   function __sin(const a:VList):PSValue;
-  begin exit(sin(Extended(a.Items[1]))) end;
+  begin If a.Size<1 Then Begin PublicPSLib^.Reg(3); Exit End;
+        exit(sin(Extended(a.Items[1]))) end;
 
   function __cos(const a:VList):PSValue;
-  begin exit(cos(Extended(a.Items[1]))) end;
+  begin If a.Size<1 Then Begin PublicPSLib^.Reg(3); Exit End;
+        exit(cos(Extended(a.Items[1]))) end;
 
   function __exp(const a:VList):PSValue;
-  begin exit(exp(Extended(a.Items[1]))) end;
+  begin If a.Size<1 Then Begin PublicPSLib^.Reg(3); Exit End;
+        exit(exp(Extended(a.Items[1]))) end;
 
   function __ln(const a:VList):PSValue;
-  begin exit(ln(Extended(a.Items[1]))) end;
+  begin If a.Size<1 Then Begin PublicPSLib^.Reg(3); Exit End;
+        exit(ln(Extended(a.Items[1]))) end;
 
   function __random(const a:VList):PSValue;
-  begin exit(PSValue(random(Longint(a.Items[1])))) end;
+  begin If a.Size<1 Then Begin PublicPSLib^.Reg(3); Exit End;
+        exit(PSValue(random(Longint(a.Items[1])))) end;
 
   function __length(const a:VList):PSValue;
-  begin exit(length(Ansistring(a.Items[1]))) end;
+  begin If a.Size<1 Then Begin PublicPSLib^.Reg(3); Exit End;
+        exit(length(Ansistring(a.Items[1]))) end;
 
   function __chr(const a:VList):PSValue;
-  begin exit(chr(Longint(a.Items[1]))) end;
+  begin If a.Size<1 Then Begin PublicPSLib^.Reg(3); Exit End;
+        exit(chr(Longint(a.Items[1]))) end;
 
   function __ord(const a:VList):PSValue;
-  begin exit(ord(Ansistring(a.Items[1])[1])) end;
+  begin If a.Size<1 Then Begin PublicPSLib^.Reg(3); Exit End;
+        exit(ord(Ansistring(a.Items[1])[1])) end;
 
   function __pred(const a:VList):PSValue;
-  begin exit(pred(Ansistring(a.Items[1])[1])) end;
+  begin If a.Size<1 Then Begin PublicPSLib^.Reg(3); Exit End;
+        exit(pred(Ansistring(a.Items[1])[1])) end;
 
   function __succ(const a:VList):PSValue;
-  begin exit(succ(Ansistring(a.Items[1])[1])) end;
+  begin If a.Size<1 Then Begin PublicPSLib^.Reg(3); Exit End;
+        exit(succ(Ansistring(a.Items[1])[1])) end;
 
   function __exit(Const a:VList):PSValue;
-  Begin If a.Size=0 Then Halt(1302);
-        ResultList.PushBack(a.Items[1]); ExitFlag:=True; Exit(0) End;
+  Var X:Longint;
+  Begin If a.Size=0 Then X:=0 Else
+        If a.Size<>1 Then Begin PublicPSLib^.Reg(3); Exit End; X:=a.Items[1];
+        ResultList.PushBack(X); ExitFlag:=True; Exit(X) End;
 
   function __halt(const a:VList):PSValue;
-  begin if a.Size=0 then halt; halt(Longint(a.Items[1])) end;
+  Begin If a.Size=0 Then Halt; Halt(a.Items[1]) End;
 
   function __fileopen(Const a:VList):PSValue;
   var filename:Ansistring;
@@ -1704,7 +1710,7 @@ var
     PSDouble:Begin Read(PSStdIn,_Extended); pdouble(a.Items[i].p)^:=_Extended End;
     PSChar:Begin Read(PSStdIn,_Char); pChar(a.Items[i].p)^:=_Char End;
     PSStr:Begin Read(PSStdIn,_Ansistring); pAnsistring(a.Items[i].p)^:=_Ansistring End;
-    Else Halt(1005); //Read Error
+    Else Begin PublicPSLib^.Reg(18); Exit End;//Read Error
    End;
    Exit(PS1)
   End;
