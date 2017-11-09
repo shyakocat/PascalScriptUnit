@@ -1,23 +1,23 @@
 # PascalScriptUnit
 
-◆简易类Pascal脚本             
-◆2017/06/21  PascalScript1.0    
+># ◆简易类Pascal脚本             
+># ◆2017/06/21  PascalScript1.0    
 
 　　PascalScriptUnit是基于pascal的脚本解释库，旨在建立类pascal语法的运行环境。PascalScript是一种交互式简易脚本，pascal程序可以以此做到简单的外部交互效果。本代码与本条目发表前网上可以搜到的PascalScript的内容无关，Power by shyakocat 2017。pascalscript使用与pascal类似的语法，借鉴了c++、python、lua等。     
 
-># 变量类型
+>## 变量类型
 　　1.0版本中，只有int(longint)、double(real)、psstr(ansistring)三种基本类型。脚本中不能新建也不能使用主程序定义的记录体或类。脚本中可以新建一维数组(类型intarr)，数组大小以第一次索引值为准，可以用[]访问longint数组或字符串，可以在主程序关联(Assign)主程序的longint数组。变量无需申明即可使用，所有未知变量都会以int=0的形式初始化。变量赋值时，类型也会随之赋给对象。      　
 
-># 运算
+>## 运算
 　　1.0版本中，运算包括1元运算符not和其他pascal中常见的2元运算符(math库的**，+=等除外)。赋值语句:=也被认为是运算符，返回值为:=右边的值，可以用a:=b:=c这类方法。not在这里和c++的!一致，~在此不原生支持。普遍地，任何非关键字语句都有返回值。由于大部分情况都是不报错的，所以要自觉写正确语法。       
 
-># 语句
+>## 语句
 　　语句基本上分两种：表达式和关键字语句。            
 　　表达式即仅包含变量、常量、函数、操作符的简单语句。              
 　　1.0版本中，含关键字的语句会被隔离出来处理，被称作关键字语句。这里支持begin...end、if...then...else...、for...:=...to...do...、while...do...这几种语句。                 
 　　注释//后的语句全忽略。       
 
-># 基本操作
+>## 基本操作
 >>### 构建
 　　只需在主程序里定义一个PSLib类即可。在其中可以关联(Assign)脚本中的变量名与值(即对某个变量名赋值)，获取(Get)脚本中的变量名对应的值，执行(Exec)一段脚本等。
 >>### 函数
@@ -33,7 +33,7 @@
 >>### while...do…
 　　while格式必须如上不得换行，表达式布尔判定和惰性执行参见if。
 
-># 进阶原理
+>## 进阶原理
 >>### 基本类型
 　　基本类型被定义为vtype，包含int、double、psstr、TFunc(函数)、intarr(int数组指针)。这么写是为了不与pascal的基本类型或关键字冲突。PascalScriptUnit还提供了泛型动态数组List，支持pushback添加值、Items[i]访问成员等操作(更多可见源码)。PSLib内部的数组基本都由List实现。pascalscript1.0版本的索引相关操作都是Hash表实现。查询(Find)后返回在List中的位置，返回-1表示未找到。Clear过程是清空所有记录。总体效率一般。
 >>### 函数
@@ -54,7 +54,7 @@
 >>### 报错
 　　PascalScript1.0基本没有报错能力，遇到217则是某种溢出或越界或指针非法，可以试着联系shyakocat或调试源码查错。一般的，数组、赋值、地址等错误的情况下ps集成了一些报错（错误码大于1000），故遇到1000以上的错误码则可以对照源码分析错因。pascalscript遇到语法错误，则会以某种错误方式继续执行下去，所以请注意写对。
 
-># 样例
+>## 样例
 >>### 斐波那契数列
 ```
 a[10]                                           //定义int数组a[0..10]
@@ -85,7 +85,7 @@ while x>1 do
 writeln('X = ',X)
 ```
 
-># Q&A
+>## Q&A
 >>### 我怎么运行上面的代码？
 　　只要在主程序中使用以下代码即可逐句地分析语句。
 ```
@@ -116,11 +116,11 @@ end.
              
             
              
-◆2017/10/13  PascalScript2.0    
-># 与PS1.0有什么区别？    
+># ◆2017/10/13  PascalScript2.0    
+>## 与PS1.0有什么区别？    
     原本以Variant表示任意值，现在以PSValue表示。（顺便一说，在做SAGalgame.pas时发现Variant的表达对PSValue也适用，PS1.0版本大概在PS2.0中可能可以兼容很多内容）         
     PSValue是以vTypeMode（类型）和pointer（指针）记录一个变量。现阶段暂时未考虑内存的回收（？）    
-># 新增了哪些内容？    
+>## 新增了哪些内容？    
 >>### 自定义函数（递归斐波那契数列）    
 ```
 function Fib(n)If(n=0)or(n=1)Then Exit(1);Exit(Fib(n-1)+Fib(n-2));
@@ -168,6 +168,36 @@ w.Reverse(1,6)
 w.Delete(2,3)
 w.Insert(1,'CCS',998244353,-0.1)
 Print
+```
+                 
+                
+                
+                
+># ◆2017/11/9 PascalScript新增编译等级
+>## 编译等级是什么？
+     编译等级其实是解释器解释语句时出错时的处理办法。（在之前的版本中编译错误是直接退出程序的）
+     现在处理方式有cl_ignore<直接忽视编译错误，继续执行代码，错误会被记录到ErrorList>,cl_terminate<编译错误发生时，终止正在执行的语句，并且该类会被打上终止的标记，错误会被记录到ErrorList>,cl_halt<编译错误发生时，直接halt(退出程序)>。ErrorList是一个IList（Longint的List，可认为是一个记录错误码的数组）。错误码可以通过查看PSLibError数组得到对应的错因（Ansistring）。
+>## 编译等级怎么使用？
+```
+uses PascalScriptUnit;
+var
+ f:Text;
+ a:PSLib;
+ s:ansistring;
+ i:Longint;
+begin
+ a.Clear;                          //初始化
+ a.SetComplieLevel(cl_ignore);     //设置编译等级
+ a.UsesSystem;                     //导入基础的函数
+ assign(f,'Test.in'); reset(f);
+ while not eof(F) do begin
+  readln(f,s);
+  a.Exec(s)
+ end;
+ Close(f);
+ WriteLn(a.DangerTerminate);                                              //输出类是否被终止
+ For i:=1 to a.ErrorList.Size Do WriteLn(PSLibError[a.ErrorList[i]])      //依次输出错因
+end.
 ```
 
 
