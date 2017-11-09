@@ -175,8 +175,8 @@ Print
                 
 ># ◆2017/11/9 PascalScript新增编译等级
 >## 编译等级是什么？
-     编译等级其实是解释器解释语句时出错时的处理办法。（在之前的版本中编译错误是直接退出程序的）
-     现在处理方式有cl_ignore<直接忽视编译错误，继续执行代码，错误会被记录到ErrorList>,cl_terminate<编译错误发生时，终止正在执行的语句，并且该类会被打上终止的标记，错误会被记录到ErrorList>,cl_halt<编译错误发生时，直接halt(退出程序)>。ErrorList是一个IList（Longint的List，可认为是一个记录错误码的数组）。错误码可以通过查看PSLibError数组得到对应的错因（Ansistring）。
+     编译等级其实是解释器解释语句时出错时的处理办法。（在之前的版本中编译错误是直接退出程序的）            
+     现在处理方式有cl_ignore【直接忽视编译错误，继续执行代码，错误会被记录到ErrorList】,cl_terminate【编译错误发生时，终止正在执行的语句，并且该类会被打上终止的标记，错误会被记录到ErrorList】,cl_halt【编译错误发生时，直接halt(退出程序)】。ErrorList是一个IList（Longint的List，可认为是一个记录错误码的数组）。错误码可以通过查看PSLibError数组得到对应的错因（Ansistring）。
 >## 编译等级怎么使用？
 ```
 uses PascalScriptUnit;
